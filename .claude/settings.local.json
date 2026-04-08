@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /d/Weas/Repos/c++/2026-/flameshot/.cursor* /d/Weas/Repos/c++/2026-/flameshot/.github/)",
+      "Bash(xargs ls:*)",
+      "Bash(xargs grep:*)",
+      "Bash(cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo)",
+      "Bash(where cmake:*)",
+      "Read(//c/Program Files/CMake/bin/**)",
+      "Read(//c/Program Files \\(x86\\)/CMake/bin/**)",
+      "Bash(\"/c/Program Files/CMake/bin/cmake.exe\" -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo)"
+    ]
+  }
+}

@@ -135,14 +135,23 @@ CaptureWidget::CaptureWidget(const CaptureRequest& req,
                        Qt::SubWindow // Hides the taskbar icon
         );
 #endif
-        // Position the window at the selected screen's position
-        // (or the topLeft of all screens if no specific screen was selected)
         if (selectedScreen) {
+            // Single monitor mode (pre-selected via CLI)
             move(selectedScreen->geometry().topLeft());
+            QSize windowSize = pixmap().size();
+            if (pixmap().devicePixelRatio() > 1.0) {
+                windowSize =
+                  QSize(pixmap().width() / pixmap().devicePixelRatio(),
+                        pixmap().height() / pixmap().devicePixelRatio());
+            }
+            resize(windowSize);
+            if (windowHandle()) {
+                windowHandle()->setScreen(selectedScreen);
+            }
         } else {
+            // Full desktop mode: span all monitors
             for (QScreen* const screen : QGuiApplication::screens()) {
                 QPoint topLeftScreen = screen->geometry().topLeft();
-
                 if (topLeftScreen.x() < topLeft.x()) {
                     topLeft.setX(topLeftScreen.x());
                 }
@@ -151,17 +160,23 @@ CaptureWidget::CaptureWidget(const CaptureRequest& req,
                 }
             }
             move(topLeft);
-        }
-        // On Windows, account for DPR when sizing the window
-        QSize windowSize = pixmap().size();
-        if (pixmap().devicePixelRatio() > 1.0) {
-            windowSize = QSize(pixmap().width() / pixmap().devicePixelRatio(),
-                               pixmap().height() / pixmap().devicePixelRatio());
-        }
-        resize(windowSize);
 
-        if (selectedScreen != nullptr && windowHandle()) {
-            windowHandle()->setScreen(selectedScreen);
+            // Compute total logical desktop size for the widget
+            QRect totalLogical;
+            for (QScreen* const screen : QGuiApplication::screens()) {
+                totalLogical = totalLogical.united(screen->geometry());
+            }
+            resize(totalLogical.size());
+
+            // Set effective DPR so the physical-pixel pixmap maps correctly
+            // onto the logical-pixel widget
+            if (totalLogical.width() > 0) {
+                qreal effectiveDpr = static_cast<qreal>(
+                                       m_context.screenshot.width()) /
+                                     totalLogical.width();
+                m_context.screenshot.setDevicePixelRatio(effectiveDpr);
+                m_context.origScreenshot.setDevicePixelRatio(effectiveDpr);
+            }
         }
 #elif defined(Q_OS_MACOS)
         QScreen* currentScreen = QGuiAppCurrentScreen().currentScreen();
@@ -199,7 +214,23 @@ CaptureWidget::CaptureWidget(const CaptureRequest& req,
 
     QVector<QRect> areas;
     if (m_context.fullscreen) {
-        // Always display on a single screen, normalized to (0, 0)
+#if defined(Q_OS_WIN)
+        if (!selectedScreen) {
+            // Full desktop mode: build areas from all screens
+            QPoint origin = pos(); // widget's global position (topLeft)
+            for (QScreen* const screen : QGuiApplication::screens()) {
+                QRect r = screen->geometry();
+                // Normalize to widget-local coordinates
+                r.moveTo(r.topLeft() - origin);
+                areas.append(r);
+            }
+        } else {
+            QRect r = selectedScreen->geometry();
+            r.moveTo(0, 0);
+            areas.append(r);
+        }
+#else
+        // Single screen mode on other platforms
         QScreen* screenForAreas = selectedScreen;
         if (!screenForAreas) {
             screenForAreas = QGuiAppCurrentScreen().currentScreen();
@@ -210,6 +241,7 @@ CaptureWidget::CaptureWidget(const CaptureRequest& req,
         QRect r = screenForAreas ? screenForAreas->geometry() : QRect();
         r.moveTo(0, 0);
         areas.append(r);
+#endif
     } else {
         areas.append(rect());
     }

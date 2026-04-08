@@ -246,6 +246,19 @@ QPixmap ScreenGrabber::grabEntireDesktop(bool& ok, int preSelectedMonitor)
     }
 #elif defined(Q_OS_WIN)
     screenshot = windowsScreenshot(wid);
+
+    // If monitor was pre-selected (CLI), crop to that monitor
+    if (preSelectedMonitor >= 0) {
+        const QList<QScreen*> screens = QGuiApplication::screens();
+        if (preSelectedMonitor < screens.size()) {
+            m_selectedMonitor = preSelectedMonitor;
+            return cropToMonitor(screenshot, preSelectedMonitor);
+        }
+    }
+
+    // For GUI mode: return the full desktop pixmap so CaptureWidget
+    // spans all monitors, preventing black/uncovered screens
+    return screenshot;
 #endif
 
     // If monitor was pre-selected skip UI and crop directly

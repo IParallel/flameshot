@@ -13,6 +13,7 @@ class GlobalShortcutFilter
     Q_OBJECT
 public:
     explicit GlobalShortcutFilter(QObject* parent = nullptr);
+    ~GlobalShortcutFilter();
 
     bool nativeEventFilter(const QByteArray& eventType,
                            void* message,
@@ -21,6 +22,15 @@ public:
 private:
     quint32 getNativeModifier(Qt::KeyboardModifiers modifiers);
     quint32 nativeKeycode(Qt::Key key);
-    bool registerShortcut(quint32 nativeKey, quint32 nativeMods);
-    bool unregisterShortcut(quint32 nativeKey, quint32 nativeMods);
+
+    static constexpr int HOTKEY_ID_CAPTURE = 1;
+    static constexpr int HOTKEY_ID_HISTORY = 2;
+
+    quint32 m_captureKeycode = 0;
+    quint32 m_captureModifiers = 0;
+    bool m_captureRegistered = false;
+
+    quint32 m_historyKeycode = 0;
+    quint32 m_historyModifiers = 0;
+    bool m_historyRegistered = false;
 };
